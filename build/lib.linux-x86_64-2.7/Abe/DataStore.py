@@ -32,7 +32,6 @@ import deserialize
 import util
 import logging
 import base58
-import json 
 
 SCHEMA_VERSION = "Abe35"
 
@@ -57,8 +56,8 @@ CONFIG_DEFAULTS = {
 WORK_BITS = 304  # XXX more than necessary.
 
 CHAIN_CONFIG = [
-    {"chain":"PyramidsCoin",
-     "code3":"PYRA", "address_version":"\x38", "magic":"\xfe\xa5\x03\xdd"},
+    {"chain":"Quarkcoin",
+     "code3":"QRK", "address_version":"\x3a", "magic":"\xfe\xa5\x03\xdd"},
     ]
 
 NULL_HASH = "\0" * 32
@@ -887,8 +886,7 @@ class DataStore(object):
     b.block_total_seconds,
     b.block_satoshi_seconds,
     b.block_total_ss,
-    b.block_ss_destroyed,
-    b.block_masternode_votes
+    b.block_ss_destroyed
 FROM chain_candidate cc
 JOIN block b ON (cc.block_id = b.block_id)
 LEFT JOIN block prev ON (b.prev_block_id = prev.block_id)""",
@@ -1034,7 +1032,6 @@ store._ddl['configvar'],
     block_total_ss NUMERIC(28) NULL,
     block_num_tx  NUMERIC(10) NOT NULL,
     block_ss_destroyed NUMERIC(28) NULL,
-    block_masternode_votes text,
     FOREIGN KEY (prev_block_id)
         REFERENCES block (block_id),
     FOREIGN KEY (search_block_id)
@@ -1791,9 +1788,9 @@ store._ddl['txout_approx'],
                     prev_block_id, block_chain_work, block_value_in,
                     block_value_out, block_total_satoshis,
                     block_total_seconds, block_total_ss, block_num_tx,
-                    search_block_id, block_masternode_votes
+                    search_block_id
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )""",
                 (block_id, store.hashin(b['hash']), store.intin(b['version']),
                  store.hashin(b['hashMerkleRoot']), store.intin(b['nTime']),
@@ -1803,7 +1800,7 @@ store._ddl['txout_approx'],
                  store.intin(b['value_in']), store.intin(b['value_out']),
                  store.intin(b['satoshis']), store.intin(b['seconds']),
                  store.intin(b['total_ss']),
-                 len(b['transactions']), b['search_block_id'], json.dumps(b['masternode-votes'])))
+                 len(b['transactions']), b['search_block_id']))
 
         except store.module.DatabaseError:
 
@@ -2647,7 +2644,7 @@ store._ddl['txout_approx'],
         chain_ids = frozenset([chain_id])
 
         conffile = dircfg.get("conf",
-                              os.path.join(dircfg['dirname'], "PyramidsCoin.conf"))
+                              os.path.join(dircfg['dirname'], "quarkcoin.conf"))
         try:
             conf = dict([line.strip().split("=", 1)
                          if "=" in line
@@ -2662,7 +2659,7 @@ store._ddl['txout_approx'],
         rpcpassword = conf["rpcpassword"]
         rpcconnect  = conf.get("rpcconnect", "127.0.0.1")
         rpcport     = conf.get("rpcport",
-                               "13993" if "testnet" in conf else "33993")
+                               "18332" if "testnet" in conf else "8332")
         url = "http://" + rpcuser + ":" + rpcpassword + "@" + rpcconnect \
             + ":" + rpcport
 
@@ -2946,7 +2943,7 @@ store._ddl['txout_approx'],
                     if (data != ""):
                         ds.read_cursor -= len(data)
                         break
-                store.log.info("Skipped %d NUL bytes at bblolock end",
+                store.log.info("Skipped %d NUL bytes at block end",
                                ds.read_cursor - offset)
                 continue
 
@@ -3028,8 +3025,6 @@ store._ddl['txout_approx'],
             store.save_blkfile_offset(dircfg, ds.read_cursor)
 
     def parse_block(store, ds, chain_id=None, magic=None, length=None):
-        end = ds.read_cursor + length
-        
         d = deserialize.parse_BlockHeader(ds)
         if d['version'] & (1 << 8):
             if chain_id in store.no_bit8_chain_ids:
@@ -3042,13 +3037,6 @@ store._ddl['txout_approx'],
         nTransactions = ds.read_compact_size()
         for i in xrange(nTransactions):
             d['transactions'].append(deserialize.parse_Transaction(ds))
-        d['masternode-votes'] = []
-
-        if ds.read_cursor != end:
-            nVotes = ds.read_compact_size()
-            for i in xrange(nVotes):
-                d['masternode-votes'].append(deserialize.parse_MasterNodeVote(ds))
-
         return d
 
     def parse_tx(store, bytes):

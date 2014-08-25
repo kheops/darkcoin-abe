@@ -1,4 +1,4 @@
-Darkcoin block chain browser
+PyramidsCoin block chain browser
 https://github.com/Neisklar/Darkcoin-blockexplorer
 
 This work is a fork of Abe, modified for Darkcoin by evan82:

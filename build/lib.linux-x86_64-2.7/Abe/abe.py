@@ -69,19 +69,19 @@ DEFAULT_TEMPLATE = """
 </head>
 <body>
     <h1><a href=\"%(dotdot)s%(HOMEPAGE)s\"><img
-     src=\"%(dotdot)s%(STATIC_PATH)slogo32.png\" class=\"logoimg\" style=\"vertical-align: middle;\" alt=\"PyramidsCoin logo\" /></a> %(h1)s
+     src=\"%(dotdot)s%(STATIC_PATH)slogo32.png\" class=\"logoimg\" style=\"vertical-align: middle;\" alt=\"Quarkcoin logo\" /></a> %(h1)s
     </h1>
     %(body)s
     <p style=\"font-size: smaller\">
         <span style=\"font-style: italic\">
-            PyramidsCoin Explorer powered by <a href=\"%(ABE_URL)s\">%(APPNAME)s</a>
+            Quarkcoin Explorer powered by <a href=\"%(ABE_URL)s\">%(APPNAME)s</a>
         </span><br />
         Tips appreciated!
         <a href=\"%(dotdot)saddress/%(DONATIONS_BTC)s\">BTC</a>
         <a href=\"%(dotdot)saddress/%(DONATIONS_NMC)s\">QRK</a>
     </p>
     <p style=\"font-size: smaller\">
-        <a href=\"https://github.com/Neisklar/xcoin-blockexplorer\">APGL Source</a>
+        <a href=\"https://github.com/Neisklar/quarkcoin-blockexplorer\">APGL Source</a>
     </p>
 </body>
 </html>
@@ -90,7 +90,7 @@ DEFAULT_TEMPLATE = """
 DEFAULT_LOG_FORMAT = "%(message)s"
 
 # XXX This should probably be a property of chain, or even a query param.
-LOG10COIN = 8
+LOG10COIN = 5
 COIN = 10 ** LOG10COIN
 
 # It is fun to change "6" to "3" and search lots of addresses.
@@ -415,7 +415,7 @@ class Abe:
         body = page['body']
         body += abe.search_form(page)
 
-        count = 20# get_int_param(page, 'count') or 20
+        count = get_int_param(page, 'count') or 20
         hi = get_int_param(page, 'hi')
         orig_hi = hi
 
@@ -555,8 +555,7 @@ class Abe:
                 block_satoshi_seconds,
                 block_total_ss,
                 block_ss_destroyed,
-                block_num_tx,
-                block_masternode_votes
+                block_num_tx
               FROM chain_summary
              WHERE """ + where
         row = abe.store.selectrow(sql, bind)
@@ -566,7 +565,7 @@ class Abe:
         (block_id, block_hash, block_version, hashMerkleRoot,
          nTime, nBits, nNonce, height,
          prev_block_hash, block_chain_work, value_in, value_out,
-         satoshis, seconds, ss, total_ss, destroyed, num_tx, votes) = (
+         satoshis, seconds, ss, total_ss, destroyed, num_tx) = (
             row[0], abe.store.hashout_hex(row[1]), row[2],
             abe.store.hashout_hex(row[3]), row[4], int(row[5]), row[6],
             row[7], abe.store.hashout_hex(row[8]),
@@ -576,7 +575,7 @@ class Abe:
             None if row[14] is None else int(row[14]),
             None if row[15] is None else int(row[15]),
             None if row[16] is None else int(row[16]),
-            int(row[17]), row[18]
+            int(row[17]),
             )
 
         next_list = abe.store.selectall("""
@@ -645,6 +644,8 @@ class Abe:
 
             '</p>\n']
 
+        body += ['<h3>Transactions</h3>\n']
+
         tx_ids = []
         txs = {}
         block_out = 0
@@ -707,22 +708,6 @@ class Abe:
                     "value": txin_value,
                     "pubkey_hash": pubkey_hash,
                     })
-        
-
-        body += ['<h3>Masternode Votes</h3>\n']
-
-        ##################### MASTERNODE VOTING #######################
-        body += ['<BR><table><tr><th>Blockheight</th><th>Pubkey</th><th>Votes</th>'
-                 '</tr>\n']
-
-        voteslist = json.loads(votes)
-        for v in voteslist:
-            body += "<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (v['blockHeight'], v['scriptPubKey'], v['votes'])
-
-        body += '</table><BR>\n'
-        ################################################################
-
-        body += ['<h3>Transactions</h3>\n']
 
         body += ['<table><tr><th>Transaction</th><th>Fee</th>'
                  '<th>Size (kB)</th><th>From (amount)</th><th>To (amount)</th>'
